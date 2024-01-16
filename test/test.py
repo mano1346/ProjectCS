@@ -10,6 +10,8 @@ from sgp4.api import Satrec
 
 import numpy as np
 
+import os
+
 
 def get_orbit_for_satellite(sat: Satrec):
     jd1, jd2 = sat.jdsatepoch, sat.jdsatepochF
@@ -21,10 +23,10 @@ def get_orbit_for_satellite(sat: Satrec):
 
 satellite_names = []
 orbits = []
-max_count = 100
+max_count = 5
 latest_epoch = Time(0, 0, format = 'jd')
 
-with open("starlink.xml") as xml:
+with open(os.path.join(os.path.dirname(__file__), 'starlink.xml')) as xml:
     segments = omm.parse_xml(xml)
 
     count = 0
@@ -51,7 +53,7 @@ for orbit in orbits:
     orbit = orbit.propagate(latest_epoch - orbit.epoch)
 
     coords = []
-    for i in range(5):
+    for i in range(20):
         orbit = orbit.propagate(1 << u.min)
         coords.append(orbit.r)
 
