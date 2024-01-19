@@ -26,7 +26,7 @@ def get_orbit_for_satellite(sat: Satrec):
 
 satellite_names = []
 orbits = []
-max_count = 50
+max_count = 500
 latest_epoch = Time(0, 0, format="jd")
 
 with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
@@ -50,23 +50,20 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
             break
 
 
-def distance_between_orbits(orbit1: Orbit, orbit2: Orbit):
-    coords1, coords2 = np.array(orbit1.r.value), np.array(orbit2.r.value)
-
-    return np.power(coords1 - coords2, 2).sum() ** 0.5
-
-
 for i in range(len(orbits)):
     orbits[i] = orbits[i].propagate(latest_epoch - orbit.epoch)
 
 from scipy.spatial.distance import pdist, squareform
 
-satellite_coords = [list()] * len(orbits)
-for _ in range(50):
+simulation_length = 100
+satellite_coords = [[] for _ in range(simulation_length)]
+
+for timestep in range(simulation_length):
     for i in range(len(orbits)):
         orbits[i] = orbit = orbits[i].propagate(1 << u.min)
+        orbit = orbits[i]
 
-        # satellite_coords[i].append(orbit.r)
+        satellite_coords[timestep].append(orbit.r.value)
 
     pos_vect = []
     for orbit in orbits:
@@ -75,3 +72,8 @@ for _ in range(50):
     distance_matrix = squareform(distances)
 
     print(np.mean(distance_matrix))
+
+
+from satellite_visualization import visualize_data
+
+visualize_data(satellite_coords)
