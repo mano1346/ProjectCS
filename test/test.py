@@ -3,7 +3,9 @@ from astropy.time import Time
 from astropy.coordinates import CartesianRepresentation
 
 from poliastro.bodies import Earth
-from poliastro.twobody import Orbit
+
+from poliastro.twobody import Orbit, propagation
+from poliastro.core.propagation import func_twobody
 
 from sgp4 import omm
 from sgp4.api import Satrec
@@ -12,6 +14,8 @@ import numpy as np
 import pandas as pd
 
 import os
+
+from scipy.spatial.distance import pdist
 
 
 def get_orbit_for_satellite(sat: Satrec):
@@ -38,7 +42,6 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
         omm.initialize(sat, segment)
 
         orbit = get_orbit_for_satellite(sat)
-
         if orbit.epoch > latest_epoch:
             latest_epoch = orbit.epoch
 
@@ -49,29 +52,22 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
         if count >= max_count:
             break
 
-
 for i in range(len(orbits)):
     orbits[i] = orbits[i].propagate(latest_epoch - orbits[i].epoch)
-
-from scipy.spatial.distance import pdist, squareform
-
+    
 simulation_length = 100
 satellite_coords = [[] for _ in range(simulation_length)]
 
 for timestep in range(simulation_length):
     for i in range(len(orbits)):
-        orbits[i] = orbit = orbits[i].propagate(1 << u.min)
-        orbit = orbits[i]
-
+        orbits[i] = orbit = orbits[i].propagate(
+            1 << u.min, method=propagation.FarnocchiaPropagator()
+        )
         satellite_coords[timestep].append(orbit.r.value)
 
-    pos_vect = []
-    for orbit in orbits:
-        pos_vect.append(np.array(orbit.r.value))
-    distances = pdist(pos_vect)
-    distance_matrix = squareform(distances)
+    distances = pdist(satellite_coords[timestep])
 
-    print(np.mean(distance_matrix))
+    print(np.mean(distances))
 
 
 from satellite_visualization import visualize_data
