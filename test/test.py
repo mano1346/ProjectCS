@@ -51,7 +51,7 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
 
 
 for i in range(len(orbits)):
-    orbits[i] = orbits[i].propagate(latest_epoch - orbit.epoch)
+    orbits[i] = orbits[i].propagate(latest_epoch - orbits[i].epoch)
 
 from scipy.spatial.distance import pdist, squareform
 
