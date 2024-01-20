@@ -3,6 +3,7 @@ from astropy.time import Time
 from astropy.coordinates import CartesianRepresentation
 
 from poliastro.bodies import Earth
+
 from poliastro.twobody import Orbit, propagation
 from poliastro.core.propagation import func_twobody
 
@@ -10,6 +11,7 @@ from sgp4 import omm
 from sgp4.api import Satrec
 
 import numpy as np
+import pandas as pd
 
 import os
 
@@ -51,20 +53,23 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
             break
 
 for i in range(len(orbits)):
-    orbits[i] = orbits[i].propagate(latest_epoch - orbit.epoch)
+    orbits[i] = orbits[i].propagate(latest_epoch - orbits[i].epoch)
+    
+simulation_length = 100
+satellite_coords = [[] for _ in range(simulation_length)]
 
-print("check")
-for _ in range(250):
+for timestep in range(simulation_length):
     for i in range(len(orbits)):
         orbits[i] = orbit = orbits[i].propagate(
             1 << u.min, method=propagation.FarnocchiaPropagator()
         )
+        satellite_coords[timestep].append(orbit.r.value)
 
-    pos_vect = []
-    for orbit in orbits:
-        pos_vect.append(np.array(orbit.r.value))
-    distance_matrix = pdist(pos_vect, metric="euclidean")
+    distances = pdist(satellite_coords[timestep])
 
-    # print(np.mean(distance_matrix))
+    print(np.mean(distances))
 
-    # print(np.min(distance_matrix))
+
+from satellite_visualization import visualize_data
+
+visualize_data(satellite_coords)
