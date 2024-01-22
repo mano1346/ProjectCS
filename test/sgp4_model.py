@@ -11,7 +11,8 @@ from scipy.spatial.distance import pdist
 
 satellite_names = []
 sattlites = []
-max_count = 5600
+max_count = 560
+latest_epoch = 0
 
 
 with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
@@ -24,6 +25,9 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
 
         sattlites.append(sat)
         satellite_names.append(segment["OBJECT_NAME"])
+
+        if sat.epochdays > latest_epoch:
+            latest_epoch = sat.epochdays       
 
         count += 1
         if count >= max_count:
@@ -57,7 +61,7 @@ def propagate_satellite(sat, time_delta):
 def propagate_n_satellites(sattlites, time_delta):
     coords = []
     for sat in sattlites:
-        r, v = propagate_satellite(sat, time_delta)
+        r, v = propagate_satellite(sat, time_delta + datetime.timedelta(days = latest_epoch - sat.epochdays))
         coords.append(r)
 
     distances = pdist(coords)
@@ -66,17 +70,23 @@ def propagate_n_satellites(sattlites, time_delta):
 
 start = time.process_time()
 
-simulation_length = 500
+simulation_length = 1000
 timestep = datetime.timedelta(seconds=1)
-sattlite_coords = []
+satellite_coords = [[] for _ in range(simulation_length)]
 time_delta = timestep
 
 for i in range(simulation_length):
     coords, distances = propagate_n_satellites(sattlites, time_delta)
-    sattlite_coords.append(coords)
+    satellite_coords[i].extend(coords)
+
     # print(np.mean(distances))
 
     time_delta += timestep
+    print(time_delta)
 
+
+from satellite_visualization import visualize_data
+
+visualize_data(satellite_coords)
 
 print(time.process_time() - start)
