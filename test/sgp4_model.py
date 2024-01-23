@@ -34,25 +34,11 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
         if count >= max_count:
             break
 
-jd, jdF = satellites[0].jdsatepoch, satellites[0].jdsatepochF
-
-
-def time_to_jd_jdf(time):
-    return jday(time.year, time.month, time.day, time.hour, time.minute, time.second)
+jd, jdF = jday(2024, 1, 11, 0, 0, 0)
 
 
 def get_pos_satellite(sat):
     error, r, v = sat.sgp4(jd, jdF)
-    assert error == 0
-
-    return r, v
-
-
-def propagate_satellite(sat, time_delta):
-    epoch_datetime = sat_epoch_datetime(sat) + time_delta
-    pro_jd, pro_jdF = time_to_jd_jdf(epoch_datetime)
-
-    error, r, v = sat.sgp4(pro_jd, pro_jdF)
     assert error == 0
 
     return r, v
