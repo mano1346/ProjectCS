@@ -7,6 +7,7 @@ from sgp4.api import Satrec, jday
 from sgp4.conveniences import sat_epoch_datetime
 from sgp4 import omm
 
+from vallado_propagator import vallado_propagate
 from scipy.spatial.distance import pdist
 
 satellite_names = []
@@ -27,7 +28,7 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
         satellite_names.append(segment["OBJECT_NAME"])
 
         if sat.epochdays > latest_epoch:
-            latest_epoch = sat.epochdays       
+            latest_epoch = sat.epochdays
 
         count += 1
         if count >= max_count:
@@ -39,7 +40,6 @@ def time_to_jd_jdf(time):
 
 
 def get_pos_satellite(sat):
-    # Use the epoch from the Satrec object
     jd, jdF = sat.jdsatepoch, sat.jdsatepochF
     error, r, v = sat.sgp4(jd, jdF)
     assert error == 0
@@ -48,9 +48,8 @@ def get_pos_satellite(sat):
 
 
 def propagate_satellite(sat, time_delta):
-    # Use the epoch from the Satrec object
-    jd_datetime = sat_epoch_datetime(sat)
-    pro_jd, pro_jdF = time_to_jd_jdf(jd_datetime + time_delta)
+    epoch_datetime = sat_epoch_datetime(sat) + time_delta
+    pro_jd, pro_jdF = time_to_jd_jdf(epoch_datetime)
 
     error, r, v = sat.sgp4(pro_jd, pro_jdF)
     assert error == 0
@@ -58,17 +57,28 @@ def propagate_satellite(sat, time_delta):
     return r, v
 
 
+# def apply_impulse(sat, impulse_velocity):
+#     sat.vim += impulse_velocity[0]
+#     sat.vom += impulse_velocity[1]
+#     sat.vnm += impulse_velocity[2]
+
+#     return sat
+
+
 def propagate_n_satellites(sattlites, time_delta):
     coords = []
     for sat in sattlites:
-        r, v = propagate_satellite(sat, time_delta + datetime.timedelta(days = latest_epoch - sat.epochdays))
+        r, v = propagate_satellite(
+            sat, time_delta + datetime.timedelta(days=latest_epoch - sat.epochdays)
+        )
         coords.append(r)
 
     distances = pdist(coords)
     return coords, distances
 
 
-start = time.process_time()
+satrec = sattlites[0]
+print(satrec.v)
 
 simulation_length = 1000
 timestep = datetime.timedelta(seconds=1)
@@ -82,11 +92,9 @@ for i in range(simulation_length):
     # print(np.mean(distances))
 
     time_delta += timestep
-    print(time_delta)
+    # print(time_delta)
 
 
 from satellite_visualization import visualize_data
 
 visualize_data(satellite_coords)
-
-print(time.process_time() - start)
