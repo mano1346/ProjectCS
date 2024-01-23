@@ -138,7 +138,7 @@ def vallado(k, r0, v0, tof, numiter):
     return f, g, fdot, gdot
 
 
-@jit
+# @jit
 def vallado_propagate(k, r0, v0, tof, *, numiter):
     # Compute Lagrange coefficients
     f, g, fdot, gdot = vallado(k, r0, v0, tof, numiter)

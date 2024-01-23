@@ -7,14 +7,14 @@ from sgp4.api import Satrec, jday
 from sgp4.conveniences import sat_epoch_datetime
 from sgp4 import omm
 
-from vallado_propagator import vallado_propagate
+from vallado_propagator import vallado_propagate as propagate
 from scipy.spatial.distance import pdist
 
 satellite_names = []
 satellites = []
-max_count = 560
+max_count = 5600
 latest_epoch = 0
-
+k = 3.986004418 * (10**5)
 
 with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
     segments = omm.parse_xml(xml)
@@ -34,13 +34,14 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
         if count >= max_count:
             break
 
+jd, jdF = satellites[0].jdsatepoch, satellites[0].jdsatepochF
+
 
 def time_to_jd_jdf(time):
     return jday(time.year, time.month, time.day, time.hour, time.minute, time.second)
 
 
 def get_pos_satellite(sat):
-    jd, jdF = sat.jdsatepoch, sat.jdsatepochF
     error, r, v = sat.sgp4(jd, jdF)
     assert error == 0
 
@@ -57,44 +58,43 @@ def propagate_satellite(sat, time_delta):
     return r, v
 
 
-# def apply_impulse(sat, impulse_velocity):
-#     sat.vim += impulse_velocity[0]
-#     sat.vom += impulse_velocity[1]
-#     sat.vnm += impulse_velocity[2]
+def propagate_n_satellites(sat_r, sat_v, tof):
+    sat_new_r = []
+    sat_new_v = []
+    for i in range(len(sat_r)):
+        r, v = propagate(k, sat_r[i], sat_v[i], tof, numiter=350)
+        sat_new_r.append(r)
+        sat_new_v.append(v)
 
-#     return sat
-
-
-def propagate_n_satellites(satellites, time_delta):
-    coords = []
-    for sat in satellites:
-        r, v = propagate_satellite(
-            sat, time_delta + datetime.timedelta(days=latest_epoch - sat.epochdays)
-        )
-        coords.append(r)
-
-    distances = pdist(coords)
-    return coords, distances
+    distances = pdist(sat_new_r)
+    return sat_new_r, sat_new_v, distances
 
 
-satrec = satellites[0]
-print(satrec.v)
+# satrec = satellites[0]
+# print(satrec.v)
+start = time.process_time()
 
-simulation_length = 1000
-timestep = datetime.timedelta(seconds=1)
-satellite_coords = [[] for _ in range(simulation_length)]
-time_delta = timestep
+simulation_length = 100
+tof = 1
+satellite_r = [[] for _ in range(simulation_length + 1)]
+satellite_v = [[] for _ in range(simulation_length + 1)]
+
+r0 = []
+v0 = []
+for sat in satellites:
+    r, v = get_pos_satellite(sat)
+    r0.append(np.array(r))
+    v0.append(np.array(v))
+
+satellite_r[0].extend(r0)
+satellite_v[0].extend(v0)
 
 for i in range(simulation_length):
-    coords, distances = propagate_n_satellites(satellites, time_delta)
-    satellite_coords[i].extend(coords)
+    ri, vi, distances = propagate_n_satellites(satellite_r[i], satellite_v[i], tof)
+    satellite_r[i + 1].extend(ri)
+    satellite_v[i + 1].extend(vi)
 
-    # print(np.mean(distances))
-
-    time_delta += timestep
-    # print(time_delta)
-
-
+print(time.process_time() - start)
 from satellite_visualization import visualize_data
 
-visualize_data(satellite_coords)
+visualize_data(satellite_r)
