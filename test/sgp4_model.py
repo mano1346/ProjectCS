@@ -11,7 +11,7 @@ from vallado_propagator import vallado_propagate
 from scipy.spatial.distance import pdist
 
 satellite_names = []
-sattlites = []
+satellites = []
 max_count = 560
 latest_epoch = 0
 
@@ -24,7 +24,7 @@ with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
         sat = Satrec()
         omm.initialize(sat, segment)
 
-        sattlites.append(sat)
+        satellites.append(sat)
         satellite_names.append(segment["OBJECT_NAME"])
 
         if sat.epochdays > latest_epoch:
@@ -65,9 +65,9 @@ def propagate_satellite(sat, time_delta):
 #     return sat
 
 
-def propagate_n_satellites(sattlites, time_delta):
+def propagate_n_satellites(satellites, time_delta):
     coords = []
-    for sat in sattlites:
+    for sat in satellites:
         r, v = propagate_satellite(
             sat, time_delta + datetime.timedelta(days=latest_epoch - sat.epochdays)
         )
@@ -77,7 +77,7 @@ def propagate_n_satellites(sattlites, time_delta):
     return coords, distances
 
 
-satrec = sattlites[0]
+satrec = satellites[0]
 print(satrec.v)
 
 simulation_length = 1000
@@ -86,7 +86,7 @@ satellite_coords = [[] for _ in range(simulation_length)]
 time_delta = timestep
 
 for i in range(simulation_length):
-    coords, distances = propagate_n_satellites(sattlites, time_delta)
+    coords, distances = propagate_n_satellites(satellites, time_delta)
     satellite_coords[i].extend(coords)
 
     # print(np.mean(distances))
