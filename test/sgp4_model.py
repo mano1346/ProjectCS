@@ -44,6 +44,8 @@ def get_pos_satellite(sat):
     return r, v
 
 
+
+
 def propagate_n_satellites(sat_r, sat_v, tof):
     sat_new_r = []
     sat_new_v = []
@@ -52,15 +54,34 @@ def propagate_n_satellites(sat_r, sat_v, tof):
         sat_new_r.append(r)
         sat_new_v.append(v)
 
-    distances = pdist(sat_new_r)
-    return sat_new_r, sat_new_v, distances
+    return sat_new_r, sat_new_v
+
+
+
+from octree import generate_octree
+
+pairs = []
+for value1 in range(len(satellites)):
+    for value2 in range(value1 + 1, len(satellites)):
+        pairs.append((value1, value2))
+pairs = np.array(pairs)
+
+bins = [10, 20, 30, 40, 50]
+
+def get_hist_data(sat_positions):
+    distances = pdist(sat_positions)
+    sat_hist_count = []
+    for bin_threshold in bins:
+        sat_hist_count.append(len(np.unique(pairs[(distances < bin_threshold).nonzero()[0]].flatten())))
+    return sat_hist_count
+
 
 
 # satrec = satellites[0]
 # print(satrec.v)
 start = time.process_time()
 
-simulation_length = 0
+simulation_length = 100
 tof = 1
 satellite_r = [[] for _ in range(simulation_length + 1)]
 satellite_v = [[] for _ in range(simulation_length + 1)]
@@ -75,13 +96,19 @@ for sat in satellites:
 satellite_r[0].extend(r0)
 satellite_v[0].extend(v0)
 
+hist_counts = [get_hist_data(satellite_r[0])]
 for i in range(simulation_length):
-    ri, vi, distances = propagate_n_satellites(satellite_r[i], satellite_v[i], tof)
+    ri, vi = propagate_n_satellites(satellite_r[i], satellite_v[i], tof)
     satellite_r[i + 1].extend(ri)
     satellite_v[i + 1].extend(vi)
+
+    hist_count = get_hist_data(ri)
+
+    print(hist_count)
+    hist_counts.append(hist_count)
 
 print(time.process_time() - start)
 from satellite_visualization import visualize_data
 
-visualize_data(satellite_r)
+visualize_data(satellite_r, hist_counts, bins)
 
