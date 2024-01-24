@@ -9,7 +9,7 @@ from sgp4 import omm
 spice.furnsh(
     r"C:\Users\31653\Desktop\ProjectCS\test\SpiceKernels\de438.bsp"
 )  # Example SPICE kernel for planetary ephemeris
-spice.furnsh(r"C:\Users\31653\Desktop\ProjectCS\test\SpiceKernels\naif0012.tls")
+spice.furnsh(r"C:\\Users\\arjan\\OneDrive\\Documents\\GitHub\\ProjectCS\\test\\SpiceKernels")
 spice.furnsh(r"C:\Users\31653\Desktop\ProjectCS\test\SpiceKernels\jup344.bsp")
 
 

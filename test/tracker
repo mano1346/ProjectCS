@@ -1,0 +1,113 @@
+import os
+import datetime
+import numpy as np
+import time
+
+from sgp4.api import Satrec, jday
+from sgp4.conveniences import sat_epoch_datetime
+from sgp4 import omm
+
+from vallado_propagator import vallado_propagate as propagate
+from scipy.spatial.distance import pdist
+
+satellite_names = []
+satellites = []
+max_count = 1
+latest_epoch = 0
+k = 3.986004418 * (10**5)
+
+with open(os.path.join(os.path.dirname(__file__), "starlink_11_01.xml")) as xml:
+    segments = omm.parse_xml(xml)
+
+    count = 0
+    for segment in segments:
+        sat = Satrec()
+        omm.initialize(sat, segment)
+
+        satellites.append(sat)
+        satellite_names.append(segment["OBJECT_NAME"])
+
+        if sat.epochdays > latest_epoch:
+            latest_epoch = sat.epochdays
+
+        count += 1
+        if count >= max_count:
+            break
+
+# Start time: 2024-01-11T11:00:15.757344
+start_year, start_month, start_day = 2024, 1, 11
+start_hour, start_minute, start_second = 11, 0, 15.757344
+jd_start, jdF_start = jday(start_year, start_month, start_day, start_hour, start_minute, start_second)
+
+# End time: 2024-01-23T09:37:23.377728
+end_year, end_month, end_day = 2024, 1, 23
+end_hour, end_minute, end_second = 9, 37, 23.377728
+jd_end, jdF_end = jday(end_year, end_month, end_day, end_hour, end_minute, end_second)
+
+total_seconds = int((jd_end - jd_start) * 86400 + (jdF_end - jdF_start))
+
+
+def get_pos_satellite(sat):
+    error, r, v = sat.sgp4(jd_start, jdF_start)
+    assert error == 0
+
+    return r, v
+
+
+def propagate_n_satellites(sat_r, sat_v, tof):
+    sat_new_r = []
+    sat_new_v = []
+    for i in range(len(sat_r)):
+        r, v = propagate(k, sat_r[i], sat_v[i], tof, numiter=350)
+        sat_new_r.append(r)
+        sat_new_v.append(v)
+
+    distances = pdist(sat_new_r)
+    return sat_new_r, sat_new_v, distances
+
+
+# satrec = satellites[0]
+# print(satrec.v)
+start = time.process_time()
+
+simulation_length = total_seconds
+
+tof = 1
+satellite_r = [[] for _ in range(simulation_length + 1)]
+satellite_v = [[] for _ in range(simulation_length + 1)]
+
+r0 = []
+v0 = []
+for sat in satellites:
+    r, v = get_pos_satellite(sat)
+    r0.append(np.array(r))
+    v0.append(np.array(v))
+
+satellite_r[0].extend(r0)
+satellite_v[0].extend(v0)
+
+for i in range(simulation_length):
+    ri, vi, distances = propagate_n_satellites(satellite_r[i], satellite_v[i], tof)
+    satellite_r[i + 1].extend(ri)
+    satellite_v[i + 1].extend(vi)
+
+print(time.process_time() - start)
+from satellite_visualization import visualize_data
+
+visualize_data(satellite_r)
+
+final_state = {
+    'satellite_name': 'STARLINK-1007',
+    'final_position': np.array(r),
+    'final_velocity': np.array(v),
+    'epoch': f"{jd_end}T{jdF_end:.6f}",
+}
+
+# Print the final state
+print("Final State:")
+print("Satellite Name:", final_state['satellite_name'])
+print("Final Position:", final_state['final_position'])
+print("Final Velocity:", final_state['final_velocity'])
+print("Epoch:", final_state['epoch'])
+
+

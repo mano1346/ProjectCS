@@ -16,7 +16,7 @@ max_count = 5600
 latest_epoch = 0
 k = 3.986004418 * (10**5)
 
-with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
+with open(os.path.join(os.path.dirname(__file__), "starlink_11_01.xml")) as xml:
     segments = omm.parse_xml(xml)
 
     count = 0
@@ -60,7 +60,7 @@ def propagate_n_satellites(sat_r, sat_v, tof):
 # print(satrec.v)
 start = time.process_time()
 
-simulation_length = 100
+simulation_length = 0
 tof = 1
 satellite_r = [[] for _ in range(simulation_length + 1)]
 satellite_v = [[] for _ in range(simulation_length + 1)]
@@ -84,3 +84,4 @@ print(time.process_time() - start)
 from satellite_visualization import visualize_data
 
 visualize_data(satellite_r)
+
