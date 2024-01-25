@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkSphereSource
@@ -22,6 +20,9 @@ from vtkmodules.all import (
     vtkChart,
     vtkIntArray
 )
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -154,6 +155,16 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
 
     iren.Initialize()
     iren.Start()
+
+
+def plot_hist_counts(hist_counts, shown_bin_index):
+    hist_counts_np = np.array(hist_counts)
+    fig, ax = plt.subplots()
+    x = range(len(hist_counts))
+    y = hist_counts_np[:, shown_bin_index]
+
+    ax.plot(x,y)
+    plt.show()
 
 
 

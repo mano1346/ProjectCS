@@ -62,7 +62,7 @@ def propagate_n_satellites(sat_r, sat_v, tof):
 
 from octree import generate_octree
 
-generate_histogram = False
+generate_histogram = True
 if generate_histogram:
     pairs = []
     for value1 in range(len(satellites)):
@@ -116,9 +116,10 @@ for i in range(simulation_length):
         hist_counts.append(hist_count)
 
 print(time.process_time() - start)
-from satellite_visualization import visualize_data
+from satellite_visualization import visualize_data, plot_hist_counts
 
 if generate_histogram:
+    plot_hist_counts(hist_counts, 4)
     visualize_data(satellite_r, hist_counts, bins)
 else:
     visualize_data(satellite_r)
