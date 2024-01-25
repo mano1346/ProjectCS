@@ -30,7 +30,7 @@ def get_orbit_for_satellite(sat: Satrec):
 
 satellite_names = []
 orbits = []
-max_count = 500
+max_count = 10
 latest_epoch = Time(0, 0, format="jd")
 
 with open(os.path.join(os.path.dirname(__file__), "starlink.xml")) as xml:
