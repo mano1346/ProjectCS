@@ -45,7 +45,8 @@ class TimeSliderCallback:
         for i, actor in enumerate(self.actors):
             actor.SetPosition(coordinates[i])
         
-        self.chartUpdater.update_chart(time)
+        if (self.chartUpdater != None):
+            self.chartUpdater.update_chart(time)
 
 
 class ChartUpdater:
@@ -62,7 +63,7 @@ class ChartUpdater:
 
 
 
-def visualize_data(satellite_coords, hist_counts, bins):
+def visualize_data(satellite_coords, hist_counts = None, bins = None):
     sphere = vtkSphereSource()
     sphere.SetRadius(50.0)
     sphere.SetPhiResolution(10)
@@ -107,35 +108,36 @@ def visualize_data(satellite_coords, hist_counts, bins):
     iren.SetRenderWindow(renderWindow)
     iren.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
 
+    chartUpdater = None
+    if (hist_counts != None):
+        view = vtkContextView()
+        view.GetRenderWindow().SetWindowName('Distance Histogram')
 
-    view = vtkContextView()
-    view.GetRenderWindow().SetWindowName('Distance Histogram')
-
-    table = vtkTable()
-    vtk_array = vtkIntArray()
-    vtk_array.SetName('bins')
-    table.AddColumn(vtk_array)
-
-    for i in range(len(hist_counts)):
+        table = vtkTable()
         vtk_array = vtkIntArray()
-        vtk_array.SetName(f'{i}')
+        vtk_array.SetName('bins')
         table.AddColumn(vtk_array)
-    table.SetNumberOfRows(len(hist_counts[0]))
 
-    for i, bin in enumerate(bins):
-        table.SetValue(i, 0, bin)
+        for i in range(len(hist_counts)):
+            vtk_array = vtkIntArray()
+            vtk_array.SetName(f'{i}')
+            table.AddColumn(vtk_array)
+        table.SetNumberOfRows(len(hist_counts[0]))
 
-    for y, col in enumerate(hist_counts):
-        for x, bin_value in enumerate(col):
-            table.SetValue(x, y + 1, bin_value)
+        for i, bin in enumerate(bins):
+            table.SetValue(i, 0, bin)
 
-    chart = vtkChartXY()
-    view.GetScene().AddItem(chart)
-    bar = chart.AddPlot(vtkChart.BAR)
-    bar.SetColor(150, 150, 150, 255)
-    bar.SetInputData(table, 0, 1)
+        for y, col in enumerate(hist_counts):
+            for x, bin_value in enumerate(col):
+                table.SetValue(x, y + 1, bin_value)
 
-    chartUpdater = ChartUpdater(table, bar, view.GetRenderWindow(), chart)
+        chart = vtkChartXY()
+        view.GetScene().AddItem(chart)
+        bar = chart.AddPlot(vtkChart.BAR)
+        bar.SetColor(150, 150, 150, 255)
+        bar.SetInputData(table, 0, 1)
+
+        chartUpdater = ChartUpdater(table, bar, view.GetRenderWindow(), chart)
 
 
     callback = TimeSliderCallback(satellite_coords, actors, chartUpdater)
