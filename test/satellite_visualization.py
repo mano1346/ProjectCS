@@ -180,13 +180,14 @@ def make_slider_widget(length):
     slider.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay()
     slider.GetPoint2Coordinate().SetValue(0.9, 0.05)
 
-    slider.SetTubeWidth(0.005)
-    slider.SetSliderLength(0.02)
-    slider.SetSliderWidth(0.02)
-    slider.SetEndCapLength(0.0)
+    slider.SetTubeWidth(0.001)
+    slider.SetSliderLength(0.025)
+    slider.SetSliderWidth(0.025)
+    slider.SetEndCapLength(0.02)
 
     slider_widget = vtkSliderWidget()
     slider_widget.SetRepresentation(slider)
+    slider_widget.SetNumberOfAnimationSteps(length - 1)
 
     return slider_widget
 
