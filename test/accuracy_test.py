@@ -22,6 +22,7 @@ from poliastro.twobody.propagation.vallado import vallado as propagate
 from scipy.spatial.distance import pdist
 from poliastro._math.linalg import norm
 
+import matplotlib.pyplot as plt
 
 R = Earth.R.to(u.km).value
 k = Earth.k.to(u.km**3 / u.s**2).value
@@ -65,7 +66,7 @@ def A_M_for_sat_v(sat_id):
 
 satellite_names = []
 satellites = []
-max_count = 10
+max_count = 100
 latest_epoch = 0
 
 with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
@@ -124,19 +125,6 @@ t_end = Time(end_time, format="datetime", scale="utc")
 def get_pos_satellite(sat, t):
     error, r, v = sat.sgp4(t.jd1, t.jd2)
     assert error == 0
-
-    teme = CartesianRepresentation(
-        r << u.km,
-        xyz_axis=-1,
-        differentials=CartesianDifferential(
-            v << (u.km / u.s),
-            xyz_axis=-1,
-        ),
-    )
-    gcrs = TEME(teme, obstime=t).transform_to(GCRS(obstime=t))
-
-    r = (gcrs.cartesian.x.value, gcrs.cartesian.y.value, gcrs.cartesian.z.value)
-    v = (gcrs.velocity.d_x.value, gcrs.velocity.d_y.value, gcrs.velocity.d_z.value)
 
     return np.array(r), np.array(v)
 
@@ -203,7 +191,41 @@ for sat in satellites_new:
     r0_new.append(r)
     v0_new.append(v)
 
+diff_positions_list = []
+diff_velocities_list = []
+
 for i in range(len(ri)):
-    print(satellite_names[i])
-    print(f"difference position = {np.abs(r0_new[i] - satellite_r[-1][i])}")
-    print(f"difference velocity = {np.abs(v0_new[i] - satellite_v[-1][i])}\n")
+    
+    diff_position = np.abs(r0_new[i] - satellite_r[-1][i])
+    diff_velocity = np.abs(v0_new[i] - satellite_v[-1][i])
+
+    diff_positions_list.append(diff_position)
+    diff_velocities_list.append(diff_velocity)
+
+differences_x = [array[0] for array in diff_positions_list]
+differences_y = [array[1] for array in diff_positions_list]
+differences_z = [array[2] for array in diff_positions_list]
+
+plt.plot(range(len(differences_x)), differences_x)
+
+plt.title('Difference in Position Progression')
+plt.xlabel('Index')
+plt.ylabel('Difference in x-position')
+
+plt.show()
+
+plt.plot(range(len(differences_y)), differences_y)
+
+plt.title('Difference in Position Progression')
+plt.xlabel('Index')
+plt.ylabel('Difference in y-position')
+
+plt.show()
+
+plt.plot(range(len(differences_z)), differences_z)
+
+plt.title('Difference in Position Progression')
+plt.xlabel('Index')
+plt.ylabel('Difference in z-position')
+
+plt.show()
