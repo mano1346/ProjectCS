@@ -20,17 +20,12 @@ from poliastro.bodies import Earth
 from poliastro.twobody.propagation.vallado import vallado as propagate
 
 from scipy.spatial.distance import pdist
-from poliastro._math.linalg import norm
 
 
-R = Earth.R.to(u.km).value
-k = Earth.k.to(u.km**3 / u.s**2).value
-J2 = Earth.J2.value
-C_D = 2.2
-rho0 = rho0_earth.to(u.kg / u.km**3).value  # kg/km^3
-H0 = H0_earth.to(u.km).value
-
-A_over_m_sats = []
+satellite_names = []
+satellites = []
+max_count = 10
+latest_epoch = 0
 
 
 def A_M_for_sat_v(sat_id):
@@ -65,7 +60,7 @@ def A_M_for_sat_v(sat_id):
 
 satellite_names = []
 satellites = []
-max_count = 10
+max_count = 5600
 latest_epoch = 0
 
 with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
@@ -82,12 +77,10 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
 
             satellites.append(sat)
             satellite_names.append(segment["OBJECT_NAME"])
-            A_over_m_sats.append(A_m)
 
             count += 1
             if count >= max_count:
                 break
-
 
 satellite_names_new = []
 satellites_new = []
@@ -106,12 +99,11 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
         if count >= max_count:
             break
 
-# N = 10
-# satellite_names = satellite_names[-N:]
-# satellites = satellites[-N:]
-# A_over_m_sats = A_over_m_sats[-N:]
-# satellite_names_new = satellite_names_new[-N:]
-# satellites_new = satellites_new[-N:]
+N = 10
+satellite_names = satellite_names[-N:]
+satellites = satellites[-N:]
+satellite_names_new = satellite_names_new[-N:]
+satellites_new = satellites_new[-N:]
 
 start_time = datetime.datetime(2024, 1, 23, 10, 0, 0)
 t_start = Time(start_time, format="datetime", scale="utc")
@@ -125,19 +117,6 @@ def get_pos_satellite(sat, t):
     error, r, v = sat.sgp4(t.jd1, t.jd2)
     assert error == 0
 
-    teme = CartesianRepresentation(
-        r << u.km,
-        xyz_axis=-1,
-        differentials=CartesianDifferential(
-            v << (u.km / u.s),
-            xyz_axis=-1,
-        ),
-    )
-    gcrs = TEME(teme, obstime=t).transform_to(GCRS(obstime=t))
-
-    r = (gcrs.cartesian.x.value, gcrs.cartesian.y.value, gcrs.cartesian.z.value)
-    v = (gcrs.velocity.d_x.value, gcrs.velocity.d_y.value, gcrs.velocity.d_z.value)
-
     return np.array(r), np.array(v)
 
 
@@ -148,24 +127,14 @@ def a_perturbations(t0, state, k, J2, R, C_D, A_over_m, H0, rho0):
     return per1 + per2, A_over_m
 
 
-def propagate_n_satellites(sat_r, sat_v, tof, curr_time):
+def propagate_n_satellites(sats, t):
     sat_new_r = []
     sat_new_v = []
-    for i in range(len(sat_r)):
-        dv, per2 = a_perturbations(
-            curr_time.timestamp() + tof,
-            np.concatenate([sat_r[i], sat_v[i]]),
-            k,
-            J2,
-            R,
-            C_D,
-            A_over_m_sats[i],
-            H0,
-            rho0,
-        )
-        r, v = propagate(k, sat_r[i], sat_v[i] + dv, tof, numiter=350)
-        sat_new_r.append(r)
-        sat_new_v.append(v)
+    for i in range(len(sats)):
+        error, r, v = sats[i].sgp4(t.jd1, t.jd2)
+        assert error == 0
+        sat_new_r.append(np.array(r))
+        sat_new_v.append(np.array(v))
 
     distances = pdist(sat_new_r)
     return sat_new_r, sat_new_v, distances
@@ -188,12 +157,12 @@ satellite_v.append(v0)
 i = 0
 curr_time = start_time
 while curr_time < end_time:
+    curr_time += datetime.timedelta(seconds=tof)
     ri, vi, distances = propagate_n_satellites(
-        satellite_r[i], satellite_v[i], tof, curr_time
+        satellites, Time(curr_time, format="datetime", scale="utc")
     )
     satellite_r.append(ri)
     satellite_v.append(vi)
-    curr_time += datetime.timedelta(seconds=tof)
     i += 1
 
 r0_new = []
