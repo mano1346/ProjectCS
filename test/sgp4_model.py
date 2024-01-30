@@ -7,7 +7,7 @@ from sgp4.api import Satrec, jday
 from sgp4.conveniences import sat_epoch_datetime
 from sgp4 import omm
 
-from vallado_propagator import vallado_propagate as propagate
+from poliastro.twobody.propagation.vallado import vallado as propagate
 from scipy.spatial.distance import pdist
 
 satellite_names = []
@@ -44,8 +44,6 @@ def get_pos_satellite(sat):
     return r, v
 
 
-
-
 def propagate_n_satellites(sat_r, sat_v, tof):
     sat_new_r = []
     sat_new_v = []
@@ -55,7 +53,6 @@ def propagate_n_satellites(sat_r, sat_v, tof):
         sat_new_v.append(v)
 
     return sat_new_r, sat_new_v
-
 
 
 from octree import generate_octree
@@ -70,17 +67,17 @@ if generate_histogram:
 
 bins = [10, 20, 30, 40, 50]
 
+
 def get_hist_data(sat_positions):
     distances = pdist(sat_positions)
     sat_hist_count = []
     for bin_threshold in bins:
-        sat_hist_count.append(len(np.unique(pairs[(distances < bin_threshold).nonzero()[0]].flatten())))
+        sat_hist_count.append(
+            len(np.unique(pairs[(distances < bin_threshold).nonzero()[0]].flatten()))
+        )
     return sat_hist_count
 
 
-
-# satrec = satellites[0]
-# print(satrec.v)
 start = time.process_time()
 
 simulation_length = 100
@@ -118,4 +115,3 @@ if generate_histogram:
     visualize_data(satellite_r, hist_counts, bins)
 else:
     visualize_data(satellite_r)
-
