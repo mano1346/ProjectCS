@@ -24,6 +24,8 @@ from poliastro.twobody.propagation.vallado import vallado as propagate
 
 from scipy.spatial.distance import pdist
 
+import pickle
+
 
 R = Earth.R.to(u.km).value
 k = Earth.k.to(u.km**3 / u.s**2).value
@@ -64,7 +66,6 @@ def A_M_for_sat_v(sat_id):
     else:
         return None
 
-
 satellite_names = []
 satellites = []
 max_count = 5600
@@ -96,18 +97,18 @@ def get_pos_satellite(sat, t):
     error, r, v = sat.sgp4(t.jd1, t.jd2)
     assert error == 0
 
-    teme = CartesianRepresentation(
-        r << u.km,
-        xyz_axis=-1,
-        differentials=CartesianDifferential(
-            v << (u.km / u.s),
-            xyz_axis=-1,
-        ),
-    )
-    gcrs = TEME(teme, obstime=t).transform_to(GCRS(obstime=t))
+    # teme = CartesianRepresentation(
+    #     r << u.km,
+    #     xyz_axis=-1,
+    #     differentials=CartesianDifferential(
+    #         v << (u.km / u.s),
+    #         xyz_axis=-1,
+    #     ),
+    # )
+    # gcrs = TEME(teme, obstime=t).transform_to(GCRS(obstime=t))
 
-    r = (gcrs.cartesian.x.value, gcrs.cartesian.y.value, gcrs.cartesian.z.value)
-    v = (gcrs.velocity.d_x.value, gcrs.velocity.d_y.value, gcrs.velocity.d_z.value)
+    # r = (gcrs.cartesian.x.value, gcrs.cartesian.y.value, gcrs.cartesian.z.value)
+    # v = (gcrs.velocity.d_x.value, gcrs.velocity.d_y.value, gcrs.velocity.d_z.value)
 
     return np.array(r), np.array(v)
 
@@ -150,6 +151,13 @@ from octree import generate_octree
 
 generate_histogram = True
 if generate_histogram:
+    file_name = ''
+    while file_name == '':
+        file_name = input('File name for histogram data: ')
+        if os.path.exists(os.path.join(os.path.dirname(__file__), f'{file_name}.pkl')):
+            file_name = ''
+            print('A file with this name already exists.\n')
+
     pairs = []
     for value1 in range(len(satellites) + random_satellite_count):
         for value2 in range(value1 + 1, len(satellites) + random_satellite_count):
@@ -211,7 +219,7 @@ start_time = datetime.datetime(2024, 1, 23, 10, 0, 0)
 start_time_in_s = start_time.timestamp()
 t_start = Time(start_time, format="datetime", scale="utc")
 
-simulation_length = 100000
+simulation_length = 100
 tof = 1
 satellite_r = [[] for _ in range(simulation_length + 1)]
 satellite_v = [[] for _ in range(simulation_length + 1)]
@@ -252,10 +260,13 @@ for i in range(simulation_length):
         hist_counts.append(hist_count)
 
 print(f"Simulation time :{time.process_time() - start}")
-from satellite_visualization import visualize_data, plot_hist_counts
+from satellite_visualization import visualize_data
 
 if generate_histogram:
-    plot_hist_counts(hist_counts, 4)
+    with open(os.path.join(os.path.dirname(__file__), f"{file_name}.pkl"), 'xb') as file:
+        pickle.dump(hist_counts, file)
+
+if generate_histogram:
     visualize_data(satellite_r, hist_counts, bins)
 else:
     visualize_data(satellite_r)
