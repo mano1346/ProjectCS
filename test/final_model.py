@@ -113,7 +113,10 @@ def get_pos_satellite(sat, t):
 
 
 @jit
-def a_perturbations(t0, state, k, J2, R, C_D, A_over_m, H0, rho0):
+def a_perturbations(t0, state, k, J2, R, C_D, A_over_m, H0, rho0, perturbation_chance):
+    if perturbation_chance < np.random.random():
+        return np.array([0.0,0.0,0.0])
+    
     per1 = J2_perturbation(t0, state, k, J2, R)
     per2 = atmospheric_drag_exponential(t0, state, k, R, C_D, A_over_m, H0, rho0)
     return per1 + per2
@@ -133,6 +136,8 @@ def propagate_n_satellites(sat_r, sat_v, tof, curr_time):
             A_over_m_sats[i],
             H0,
             rho0,
+
+            perturbation_chance=1.0,            
         )
         r, v = propagate(k, sat_r[i], sat_v[i] + dv, tof, numiter=350)
         sat_new_r.append(r)
