@@ -66,6 +66,7 @@ def A_M_for_sat_v(sat_id):
     else:
         return None
 
+
 satellite_names = []
 satellites = []
 max_count = 5600
@@ -116,8 +117,8 @@ def get_pos_satellite(sat, t):
 @jit
 def a_perturbations(t0, state, k, J2, R, C_D, A_over_m, H0, rho0, perturbation_chance):
     if perturbation_chance < np.random.random():
-        return np.array([0.0,0.0,0.0])
-    
+        return np.array([0.0, 0.0, 0.0])
+
     per1 = J2_perturbation(t0, state, k, J2, R)
     per2 = atmospheric_drag_exponential(t0, state, k, R, C_D, A_over_m, H0, rho0)
     return per1 + per2
@@ -137,8 +138,7 @@ def propagate_n_satellites(sat_r, sat_v, tof, curr_time):
             A_over_m_sats[i],
             H0,
             rho0,
-
-            perturbation_chance=1.0,            
+            perturbation_chance=1.0,
         )
         r, v = propagate(k, sat_r[i], sat_v[i] + dv, tof, numiter=350)
         sat_new_r.append(r)
@@ -151,12 +151,12 @@ from octree import generate_octree
 
 generate_histogram = True
 if generate_histogram:
-    file_name = ''
-    while file_name == '':
-        file_name = input('File name for histogram data: ')
-        if os.path.exists(os.path.join(os.path.dirname(__file__), f'{file_name}.pkl')):
-            file_name = ''
-            print('A file with this name already exists.\n')
+    file_name = ""
+    while file_name == "":
+        file_name = input("File name for histogram data: ")
+        if os.path.exists(os.path.join(os.path.dirname(__file__), f"{file_name}.pkl")):
+            file_name = ""
+            print("A file with this name already exists.\n")
 
     pairs = []
     for value1 in range(len(satellites) + random_satellite_count):
@@ -164,7 +164,7 @@ if generate_histogram:
             pairs.append((value1, value2))
     pairs = np.array(pairs)
 
-bins = [10, 20, 30, 40, 50]
+bins = [5, 10, 20, 30, 40]
 
 
 def get_hist_data(sat_positions):
@@ -219,7 +219,7 @@ start_time = datetime.datetime(2024, 1, 23, 10, 0, 0)
 start_time_in_s = start_time.timestamp()
 t_start = Time(start_time, format="datetime", scale="utc")
 
-simulation_length = 100
+simulation_length = 3600
 tof = 1
 satellite_r = [[] for _ in range(simulation_length + 1)]
 satellite_v = [[] for _ in range(simulation_length + 1)]
@@ -263,7 +263,9 @@ print(f"Simulation time :{time.process_time() - start}")
 from satellite_visualization import visualize_data
 
 if generate_histogram:
-    with open(os.path.join(os.path.dirname(__file__), f"{file_name}.pkl"), 'xb') as file:
+    with open(
+        os.path.join(os.path.dirname(__file__), f"{file_name}.pkl"), "xb"
+    ) as file:
         pickle.dump(hist_counts, file)
 
 if generate_histogram:
