@@ -2,6 +2,7 @@ import os
 import datetime
 import numpy as np
 import re
+import matplotlib
 
 
 from sgp4.api import Satrec
@@ -118,7 +119,7 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
 # satellite_names_new = satellite_names_new[-N:]
 # satellites_new = satellites_new[-N:]
 
-start_time = datetime.datetime(2024, 1, 24, 22, 0, 0)
+start_time = datetime.datetime(2024, 1, 23, 0, 0, 0)
 t_start = Time(start_time, format="datetime", scale="utc")
 curr_time = start_time
 
@@ -172,7 +173,6 @@ def propagate_n_satellites(sat_r, sat_v, tof, curr_time):
         sat_new_r.append(r)
         sat_new_v.append(v)
 
-    distances = pdist(sat_new_r)
     return sat_new_r, sat_new_v
 
 
@@ -187,15 +187,13 @@ for sat in satellites:
     r0.append(r)
     v0.append(v)
 
-satellite_r.append(r0)
-satellite_v.append(v0)
+ri_prev, vi_prev = r0, v0
 
 i = 0
 curr_time = start_time
 while curr_time < end_time:
-    ri, vi = propagate_n_satellites(satellite_r[i], satellite_v[i], tof, curr_time)
-    satellite_r.append(ri)
-    satellite_v.append(vi)
+    ri, vi = propagate_n_satellites(ri_prev, vi_prev, tof, curr_time)
+    ri_prev, vi_prev = ri, vi
     curr_time += datetime.timedelta(seconds=tof)
     i += 1
 
@@ -210,8 +208,8 @@ diff_positions_list = []
 diff_velocities_list = []
 
 for i in range(len(ri)):
-    diff_position = np.abs(r0_new[i] - satellite_r[-1][i])
-    diff_velocity = np.abs(v0_new[i] - satellite_v[-1][i])
+    diff_position = np.abs(r0_new[i] - ri[i])
+    diff_velocity = np.abs(v0_new[i] - vi[i])
 
     diff_positions_list.append(diff_position)
     diff_velocities_list.append(diff_velocity)
@@ -220,24 +218,29 @@ differences_x = [array[0] for array in diff_positions_list]
 differences_y = [array[1] for array in diff_positions_list]
 differences_z = [array[2] for array in diff_positions_list]
 
-fig, axes = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 5))
+
+matplotlib.rc("xtick", labelsize=20)
+matplotlib.rc("ytick", labelsize=20)
+
+fig, axes = plt.subplots(3, sharex=True, sharey=True, figsize=(11, 11))
 axes[0].plot(range(len(differences_x)), differences_x, color="blue", label="x-position")
-axes[0].legend(loc="upper left")
+axes[0].legend(loc="upper left", fontsize=20)
 axes[1].plot(
     range(len(differences_y)), differences_y, color="green", label="y-position"
 )
-axes[1].legend(loc="upper left")
+axes[1].legend(loc="upper left", fontsize=20)
 axes[2].plot(range(len(differences_z)), differences_z, color="red", label="z-position")
-axes[2].legend(loc="upper left")
+axes[2].legend(loc="upper left", fontsize=20)
 
 fig.suptitle(
-    f"""Position deviation of {len(differences_x)} satellites between satellite data from 2 days before a certain 
-epoch, which was propagated using our model, and satellite data from that epoch""",
-    fontsize=15,
+    f"""Position deviation of {len(differences_x)} satellites between satellite data 
+    from 2 days before a certain epoch, which was propagated 
+    using our model, and satellite data from that epoch""",
+    fontsize=24,
 )
 
-fig.supxlabel("Satellite number", fontsize=13)
-fig.supylabel("Position deviation in km", fontsize=13)
+fig.supxlabel("Satellite number", fontsize=22)
+fig.supylabel("Position deviation in km", fontsize=22)
 
 plt.savefig("accuracy_test_model.png")
-# plt.show()
+plt.show()
