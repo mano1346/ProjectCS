@@ -2,7 +2,7 @@ import os
 import datetime
 import numpy as np
 import re
-
+import matplotlib.pyplot as plt
 
 from sgp4.api import Satrec
 from sgp4 import omm
@@ -24,7 +24,7 @@ from scipy.spatial.distance import pdist
 
 satellite_names = []
 satellites = []
-max_count = 10
+max_count = 100
 latest_epoch = 0
 
 
@@ -89,21 +89,25 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
 
     count = 0
     for segment in segments:
-        sat = Satrec()
-        omm.initialize(sat, segment)
+        sat_id = re.findall("\d+", segment["OBJECT_ID"])
+        sat_id = [int(i) for i in sat_id]
+        A_m = A_M_for_sat_v(sat_id)
+        if A_m != None:
+            sat = Satrec()
+            omm.initialize(sat, segment)
 
-        satellites_new.append(sat)
-        satellite_names_new.append(segment["OBJECT_NAME"])
+            satellites_new.append(sat)
+            satellite_names_new.append(segment["OBJECT_NAME"])
 
-        count += 1
-        if count >= max_count:
-            break
+            count += 1
+            if count >= max_count:
+                break
 
-N = 10
-satellite_names = satellite_names[-N:]
-satellites = satellites[-N:]
-satellite_names_new = satellite_names_new[-N:]
-satellites_new = satellites_new[-N:]
+# N = 1000
+# satellite_names = satellite_names[-N:]
+# satellites = satellites[-N:]
+# satellite_names_new = satellite_names_new[-N:]
+# satellites_new = satellites_new[-N:]
 
 start_time = datetime.datetime(2024, 1, 23, 10, 0, 0)
 t_start = Time(start_time, format="datetime", scale="utc")
@@ -120,50 +124,12 @@ def get_pos_satellite(sat, t):
     return np.array(r), np.array(v)
 
 
-@jit
-def a_perturbations(t0, state, k, J2, R, C_D, A_over_m, H0, rho0):
-    per1 = J2_perturbation(t0, state, k, J2, R)
-    per2 = atmospheric_drag_exponential(t0, state, k, R, C_D, A_over_m, H0, rho0)
-    return per1 + per2, A_over_m
-
-
-def propagate_n_satellites(sats, t):
-    sat_new_r = []
-    sat_new_v = []
-    for i in range(len(sats)):
-        error, r, v = sats[i].sgp4(t.jd1, t.jd2)
-        assert error == 0
-        sat_new_r.append(np.array(r))
-        sat_new_v.append(np.array(v))
-
-    distances = pdist(sat_new_r)
-    return sat_new_r, sat_new_v, distances
-
-
-tof = 1
-satellite_r = []
-satellite_v = []
-
 r0 = []
 v0 = []
 for sat in satellites:
-    r, v = get_pos_satellite(sat, t_start)
+    r, v = get_pos_satellite(sat, t_end)
     r0.append(r)
     v0.append(v)
-
-satellite_r.append(r0)
-satellite_v.append(v0)
-
-i = 0
-curr_time = start_time
-while curr_time < end_time:
-    curr_time += datetime.timedelta(seconds=tof)
-    ri, vi, distances = propagate_n_satellites(
-        satellites, Time(curr_time, format="datetime", scale="utc")
-    )
-    satellite_r.append(ri)
-    satellite_v.append(vi)
-    i += 1
 
 r0_new = []
 v0_new = []
@@ -172,7 +138,38 @@ for sat in satellites_new:
     r0_new.append(r)
     v0_new.append(v)
 
-for i in range(len(ri)):
-    print(satellite_names[i])
-    print(f"difference position = {np.abs(r0_new[i] - satellite_r[-1][i])}")
-    print(f"difference velocity = {np.abs(v0_new[i] - satellite_v[-1][i])}\n")
+diff_positions_list = []
+diff_velocities_list = []
+
+for i in range(len(r0)):
+    diff_position = np.abs(r0_new[i] - r0[i])
+    diff_velocity = np.abs(v0_new[i] - r0[i])
+
+    diff_positions_list.append(diff_position)
+    diff_velocities_list.append(diff_velocity)
+
+differences_x = [array[0] for array in diff_positions_list]
+differences_y = [array[1] for array in diff_positions_list]
+differences_z = [array[2] for array in diff_positions_list]
+
+fig, axes = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 5))
+axes[0].plot(range(len(differences_x)), differences_x, color="blue", label="x-position")
+axes[0].legend(loc="upper left")
+axes[1].plot(
+    range(len(differences_y)), differences_y, color="green", label="y-position"
+)
+axes[1].legend(loc="upper left")
+axes[2].plot(range(len(differences_z)), differences_z, color="red", label="z-position")
+axes[2].legend(loc="upper left")
+
+fig.suptitle(
+    f"""Position deviation of {len(differences_x)} satellites between satellite data from 2 days before a certain 
+epoch, which was propagated using the SGP4 model, and satellite data from that epoch""",
+    fontsize=15,
+)
+
+fig.supxlabel("Satellite number", fontsize=13)
+fig.supylabel("Position deviation in km", fontsize=13)
+
+plt.savefig("accuracy_test_sgp4_model.png")
+plt.show()

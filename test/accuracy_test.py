@@ -66,7 +66,7 @@ def A_M_for_sat_v(sat_id):
 
 satellite_names = []
 satellites = []
-max_count = 100
+max_count = 5600
 latest_epoch = 0
 
 with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
@@ -97,15 +97,19 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
 
     count = 0
     for segment in segments:
-        sat = Satrec()
-        omm.initialize(sat, segment)
+        sat_id = re.findall("\d+", segment["OBJECT_ID"])
+        sat_id = [int(i) for i in sat_id]
+        A_m = A_M_for_sat_v(sat_id)
+        if A_m != None:
+            sat = Satrec()
+            omm.initialize(sat, segment)
 
-        satellites_new.append(sat)
-        satellite_names_new.append(segment["OBJECT_NAME"])
+            satellites_new.append(sat)
+            satellite_names_new.append(segment["OBJECT_NAME"])
 
-        count += 1
-        if count >= max_count:
-            break
+            count += 1
+            if count >= max_count:
+                break
 
 # N = 10
 # satellite_names = satellite_names[-N:]
@@ -114,7 +118,7 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
 # satellite_names_new = satellite_names_new[-N:]
 # satellites_new = satellites_new[-N:]
 
-start_time = datetime.datetime(2024, 1, 23, 10, 0, 0)
+start_time = datetime.datetime(2024, 1, 24, 22, 0, 0)
 t_start = Time(start_time, format="datetime", scale="utc")
 curr_time = start_time
 
@@ -125,6 +129,19 @@ t_end = Time(end_time, format="datetime", scale="utc")
 def get_pos_satellite(sat, t):
     error, r, v = sat.sgp4(t.jd1, t.jd2)
     assert error == 0
+
+    # teme = CartesianRepresentation(
+    #     r << u.km,
+    #     xyz_axis=-1,
+    #     differentials=CartesianDifferential(
+    #         v << (u.km / u.s),
+    #         xyz_axis=-1,
+    #     ),
+    # )
+    # gcrs = TEME(teme, obstime=t).transform_to(GCRS(obstime=t))
+
+    # r = (gcrs.cartesian.x.value, gcrs.cartesian.y.value, gcrs.cartesian.z.value)
+    # v = (gcrs.velocity.d_x.value, gcrs.velocity.d_y.value, gcrs.velocity.d_z.value)
 
     return np.array(r), np.array(v)
 
@@ -156,7 +173,7 @@ def propagate_n_satellites(sat_r, sat_v, tof, curr_time):
         sat_new_v.append(v)
 
     distances = pdist(sat_new_r)
-    return sat_new_r, sat_new_v, distances
+    return sat_new_r, sat_new_v
 
 
 tof = 1
@@ -176,9 +193,7 @@ satellite_v.append(v0)
 i = 0
 curr_time = start_time
 while curr_time < end_time:
-    ri, vi, distances = propagate_n_satellites(
-        satellite_r[i], satellite_v[i], tof, curr_time
-    )
+    ri, vi = propagate_n_satellites(satellite_r[i], satellite_v[i], tof, curr_time)
     satellite_r.append(ri)
     satellite_v.append(vi)
     curr_time += datetime.timedelta(seconds=tof)
@@ -195,7 +210,6 @@ diff_positions_list = []
 diff_velocities_list = []
 
 for i in range(len(ri)):
-    
     diff_position = np.abs(r0_new[i] - satellite_r[-1][i])
     diff_velocity = np.abs(v0_new[i] - satellite_v[-1][i])
 
@@ -206,26 +220,24 @@ differences_x = [array[0] for array in diff_positions_list]
 differences_y = [array[1] for array in diff_positions_list]
 differences_z = [array[2] for array in diff_positions_list]
 
-plt.plot(range(len(differences_x)), differences_x)
+fig, axes = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 5))
+axes[0].plot(range(len(differences_x)), differences_x, color="blue", label="x-position")
+axes[0].legend(loc="upper left")
+axes[1].plot(
+    range(len(differences_y)), differences_y, color="green", label="y-position"
+)
+axes[1].legend(loc="upper left")
+axes[2].plot(range(len(differences_z)), differences_z, color="red", label="z-position")
+axes[2].legend(loc="upper left")
 
-plt.title('Difference in Position Progression')
-plt.xlabel('Index')
-plt.ylabel('Difference in x-position')
+fig.suptitle(
+    f"""Position deviation of {len(differences_x)} satellites between satellite data from 2 days before a certain 
+epoch, which was propagated using our model, and satellite data from that epoch""",
+    fontsize=15,
+)
 
-plt.show()
+fig.supxlabel("Satellite number", fontsize=13)
+fig.supylabel("Position deviation in km", fontsize=13)
 
-plt.plot(range(len(differences_y)), differences_y)
-
-plt.title('Difference in Position Progression')
-plt.xlabel('Index')
-plt.ylabel('Difference in y-position')
-
-plt.show()
-
-plt.plot(range(len(differences_z)), differences_z)
-
-plt.title('Difference in Position Progression')
-plt.xlabel('Index')
-plt.ylabel('Difference in z-position')
-
-plt.show()
+plt.savefig("accuracy_test_model.png")
+# plt.show()
