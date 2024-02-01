@@ -8,6 +8,9 @@ This code runs a accuracy test for the our model by computing the difference
 in position between a dataset from one date and a dataset from a later date, 
 where the first dataset is propagated to the later date. 
 
+Note: Running this code takes about 3-4 hours to run for all satellites for a 
+difference between the dates of 2 days.
+
 """
 
 import os
@@ -164,7 +167,7 @@ def dv_perturbations(t0, state, k, J2, R, C_D, A_over_m, H0, rho0):
     return J2_perturbation(t0, state, k, J2, R) + atmospheric_drag_exponential(t0, state, k, R, C_D, A_over_m, H0, rho0)
 
 
-def propagate(k, r, v, tof, numiter):
+def propagate(k, r0, v0, tof, numiter):
     """ Calculate new position and velocity by getting the Lagrange coefficients with the
         Newton-Raphson method.
         
