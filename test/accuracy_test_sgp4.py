@@ -1,34 +1,39 @@
+"""
+University of Amsterdam
+
+Course: Project Computational Science
+Authors: Emmanuel Mukeh, Justin Wong & Arjan van Staveren
+
+This code runs a accuracy test for the SGP4 model by computing the difference
+in position between a dataset from one date and a dataset from a later date, 
+where the first dataset is propagated to the later date. 
+
+"""
+
+
 import os
 import datetime
 import numpy as np
 import re
+
 import matplotlib.pyplot as plt
 import matplotlib
+
 from sgp4.api import Satrec
 from sgp4 import omm
 
-from numba import njit as jit
-
 from astropy import units as u
 from astropy.time import Time
-from astropy.coordinates import TEME, GCRS
-from astropy.coordinates import CartesianRepresentation, CartesianDifferential
-
-from poliastro.core.perturbations import atmospheric_drag_exponential, J2_perturbation
-from poliastro.constants import rho0_earth, H0_earth
-from poliastro.bodies import Earth
-from poliastro.twobody.propagation.vallado import vallado as propagate
-
-from scipy.spatial.distance import pdist
-
-
-satellite_names = []
-satellites = []
-max_count = 100
-latest_epoch = 0
 
 
 def A_M_for_sat_v(sat_id):
+    """Get frontal area (A) over mass (M) ratio based on the satellites year and launch
+    number, relating to which version of the Starlink it is and returns the corresponding ratio.
+    """
+
+    # If a sat_id is from a launch after 2023_170 it's filterd out since that satellite might not be
+    # operating in it's final orbit yet.
+
     if sat_id[0] == 2023 and sat_id[1] in (26, 56, 67, 79, 96):
         return 5.6 * (10 ** (-6)) / 800
 
@@ -58,65 +63,65 @@ def A_M_for_sat_v(sat_id):
         return None
 
 
-satellite_names = []
-satellites = []
+# Initialize the max amount of satellites you want to simulate
 max_count = 5600
-latest_epoch = 0
 
+satellites_date_1 = []
+
+# Open dataset from the second date and store the satellites as Satrec objects
 with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
-    segments = omm.parse_xml(xml)
-
+    segments = omm.parse_xml(
+        xml
+    )  # Convert a segment of the xml to the satellite's orbital data in OMM format
     count = 0
     for segment in segments:
+        # Obtain the year and launch number from the satellites object id
         sat_id = re.findall("\d+", segment["OBJECT_ID"])
         sat_id = [int(i) for i in sat_id]
+
         A_m = A_M_for_sat_v(sat_id)
         if A_m != None:
+            # Add Satellite as Satrec object to the list
             sat = Satrec()
             omm.initialize(sat, segment)
-
-            satellites.append(sat)
-            satellite_names.append(segment["OBJECT_NAME"])
+            satellites_date_1.append(sat)
 
             count += 1
             if count >= max_count:
                 break
 
-satellite_names_new = []
-satellites_new = []
+# Open dataset from the second date and store the satellites as Satrec objects
+
+satellites_date_2 = []
 with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
-    segments = omm.parse_xml(xml)
-
+    segments = omm.parse_xml(
+        xml
+    )  # Convert a segment of the xml to the satellite's orbital data in OMM format
     count = 0
     for segment in segments:
+        # Obtain the year and launch number from the satellites object id
         sat_id = re.findall("\d+", segment["OBJECT_ID"])
         sat_id = [int(i) for i in sat_id]
+
         A_m = A_M_for_sat_v(sat_id)
         if A_m != None:
+            # Add Satellite as Satrec object to the list
             sat = Satrec()
             omm.initialize(sat, segment)
 
-            satellites_new.append(sat)
-            satellite_names_new.append(segment["OBJECT_NAME"])
+            satellites_date_2.append(sat)
 
             count += 1
             if count >= max_count:
                 break
 
-# N = 1000
-# satellite_names = satellite_names[-N:]
-# satellites = satellites[-N:]
-# satellite_names_new = satellite_names_new[-N:]
-# satellites_new = satellites_new[-N:]
 
-start_time = datetime.datetime(2024, 1, 23, 0, 0, 0)
-t_start = Time(start_time, format="datetime", scale="utc")
-curr_time = start_time
-
+# Initialize end time/epoch, which has to be on the date the second data is from
 end_time = datetime.datetime(2024, 1, 25, 0, 0, 0)
 t_end = Time(end_time, format="datetime", scale="utc")
 
 
+# Use SGP4 model to predict the position of a satellite on a given epoch (t)
 def get_pos_satellite(sat, t):
     error, r, v = sat.sgp4(t.jd1, t.jd2)
     assert error == 0
@@ -124,26 +129,31 @@ def get_pos_satellite(sat, t):
     return np.array(r), np.array(v)
 
 
-r0 = []
-v0 = []
-for sat in satellites:
+# Propagate the satellites from the first date to the end epoch
+r0_date1 = []
+v0_date1 = []
+for sat in satellites_date_1:
     r, v = get_pos_satellite(sat, t_end)
-    r0.append(r)
-    v0.append(v)
+    r0_date1.append(r)
+    v0_date1.append(v)
 
-r0_new = []
-v0_new = []
-for sat in satellites_new:
+# Propagate the satellites from the second date to the end epoch
+r0_date2 = []
+v0_date2 = []
+for sat in satellites_date_2:
     r, v = get_pos_satellite(sat, t_end)
-    r0_new.append(r)
-    v0_new.append(v)
+    r0_date2.append(r)
+    v0_date2.append(v)
+
+
+# Calculating position & velocity deviations between the data from the first date and the second date
 
 diff_positions_list = []
 diff_velocities_list = []
 
-for i in range(len(r0)):
-    diff_position = np.abs(r0_new[i] - r0[i])
-    diff_velocity = np.abs(v0_new[i] - r0[i])
+for i in range(len(r0_date1)):
+    diff_position = np.abs(r0_date2[i] - r0_date1[i])
+    diff_velocity = np.abs(v0_date2[i] - v0_date1[i])
 
     diff_positions_list.append(diff_position)
     diff_velocities_list.append(diff_velocity)
@@ -151,6 +161,9 @@ for i in range(len(r0)):
 differences_x = [array[0] for array in diff_positions_list]
 differences_y = [array[1] for array in diff_positions_list]
 differences_z = [array[2] for array in diff_positions_list]
+
+
+# Plot position deviations
 
 matplotlib.rc("xtick", labelsize=20)
 matplotlib.rc("ytick", labelsize=20)
