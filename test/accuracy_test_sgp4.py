@@ -65,22 +65,21 @@ def A_M_for_sat_v(sat_id):
 
 # Initialize the max amount of satellites you want to simulate
 max_count = 5600
-
 satellites_date_1 = []
 
-# Open dataset from the second date and store the satellites as Satrec objects
 with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
-    segments = omm.parse_xml(
-        xml
-    )  # Convert a segment of the xml to the satellite's orbital data in OMM format
+
+    segments = omm.parse_xml(xml)  # Convert a segment of the xml to the satellite's orbital data in OMM format
     count = 0
     for segment in segments:
+
         # Obtain the year and launch number from the satellites object id
         sat_id = re.findall("\d+", segment["OBJECT_ID"])
         sat_id = [int(i) for i in sat_id]
 
         A_m = A_M_for_sat_v(sat_id)
         if A_m != None:
+
             # Add Satellite as Satrec object to the list
             sat = Satrec()
             omm.initialize(sat, segment)
@@ -90,21 +89,22 @@ with open(os.path.join(os.path.dirname(__file__), "starlink_23_01.xml")) as xml:
             if count >= max_count:
                 break
 
-# Open dataset from the second date and store the satellites as Satrec objects
-
 satellites_date_2 = []
+
+
 with open(os.path.join(os.path.dirname(__file__), "starlink_25_01.xml")) as xml:
-    segments = omm.parse_xml(
-        xml
-    )  # Convert a segment of the xml to the satellite's orbital data in OMM format
+
+    segments = omm.parse_xml(xml)  # Convert a segment of the xml to the satellite's orbital data in OMM format
     count = 0
     for segment in segments:
+
         # Obtain the year and launch number from the satellites object id
         sat_id = re.findall("\d+", segment["OBJECT_ID"])
         sat_id = [int(i) for i in sat_id]
 
         A_m = A_M_for_sat_v(sat_id)
         if A_m != None:
+
             # Add Satellite as Satrec object to the list
             sat = Satrec()
             omm.initialize(sat, segment)
@@ -123,6 +123,9 @@ t_end = Time(end_time, format="datetime", scale="utc")
 
 # Use SGP4 model to predict the position of a satellite on a given epoch (t)
 def get_pos_satellite(sat, t):
+    """ Get position and velocity using the SGP4 perdiction
+        model, see: https://pypi.org/project/sgp4/
+    """
     error, r, v = sat.sgp4(t.jd1, t.jd2)
     assert error == 0
 
