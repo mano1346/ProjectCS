@@ -1,3 +1,13 @@
+"""
+University of Amsterdam
+
+Course: Project Computational Science
+Authors: Emmanuel Mukeh, Justin Wong & Arjan van Staveren
+
+This code creates a 3d visualisation based on data gathered in the simulation.
+It is used in final_model.py.
+"""
+
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.vtkCommonColor import vtkNamedColors
 from vtkmodules.vtkFiltersSources import vtkSphereSource
@@ -21,11 +31,10 @@ from vtkmodules.all import (
     vtkIntArray
 )
 
-import numpy as np
-import matplotlib.pyplot as plt
 
-
-
+# The __call__ function should be called when the slider changes position.
+# This class will then update the positions of the actors to match the positions of the satellites at the selected time.
+# It also prompts a ChartUpdater to update the shown histogram.
 class TimeSliderCallback:
     def __init__(self, satellite_coords, actors, chartUpdater):
         self.satellite_coords = satellite_coords
@@ -50,6 +59,7 @@ class TimeSliderCallback:
             self.chartUpdater.update_chart(time)
 
 
+# This will update the histogram based on the given time.
 class ChartUpdater:
     def __init__(self, table, bar, renderWindow, chart):
         self.table = table
@@ -63,8 +73,8 @@ class ChartUpdater:
         self.renderWindow.Render()
 
 
-
 def visualize_data(satellite_coords, hist_counts = None, bins = None):
+    # The sphere model of a satellite is defined.
     sphere = vtkSphereSource()
     sphere.SetRadius(50.0)
     sphere.SetPhiResolution(10)
@@ -76,6 +86,7 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
     colors = vtkNamedColors()
     renderer = vtkRenderer()
 
+    # An actor is added to the renderer for each satellite, which all reuse the same mapper.
     actors = []
     for _ in range(len(satellite_coords[0])):
         actor = vtkActor()
@@ -85,7 +96,7 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
         renderer.AddActor(actor)
         actors.append(actor)
     
-
+    # The sphere model of Earth is defined (larger and higher resolution).
     earth = vtkSphereSource()
     earth.SetRadius(6378)
     earth.SetPhiResolution(200)
@@ -94,6 +105,7 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
     earthMapper = vtkPolyDataMapper()
     earthMapper.SetInputConnection(earth.GetOutputPort())
 
+    # The Earth is added as an actor to the renderer.
     earthActor = vtkActor()
     earthActor.SetMapper(earthMapper)
     earthActor.GetProperty().SetColor(colors.GetColor3d('CadetBlue'))
@@ -105,12 +117,14 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
     renderWindow.SetSize(960, 540)
     renderWindow.SetWindowName('Satellite visualization')
 
+    # This interactor makes it possible to move the camera using the mouse.
     iren = vtkRenderWindowInteractor()
     iren.SetRenderWindow(renderWindow)
     iren.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
 
     chartUpdater = None
     if (hist_counts != None):
+        # The table containing all distance data and its associated window and ChartUpdater are created.
         view = vtkContextView()
         view.GetRenderWindow().SetWindowName('Distance Histogram')
 
@@ -132,6 +146,7 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
             for x, bin_value in enumerate(col):
                 table.SetValue(x, y + 1, bin_value)
 
+        # The histogram is defined.
         chart = vtkChartXY()
         view.GetScene().AddItem(chart)
         bar = chart.AddPlot(vtkChart.BAR)
@@ -152,12 +167,11 @@ def visualize_data(satellite_coords, hist_counts = None, bins = None):
     slider_widget.SetAnimationModeToAnimate()
     slider_widget.EnabledOn()
 
-
     iren.Initialize()
     iren.Start()
 
 
-
+# Initializes a slider with a bunch of parameters that dictate its appearance.
 def make_slider_widget(length):
     slider = vtkSliderRepresentation2D()
 
@@ -180,13 +194,3 @@ def make_slider_widget(length):
     slider_widget.SetNumberOfAnimationSteps(length - 1)
 
     return slider_widget
-
-
-
-if __name__ == '__main__':
-    visualize_data([
-        [[5152,5124,-5331], [-5200,-5153,5430]],
-        [[5192,5124,-4331], [-5150,-5153,4430]]
-        ], 
-        [[2, 5, 10, 20, 25], [0, 4, 9, 22, 31]],
-        [10, 20, 30, 40, 50])
