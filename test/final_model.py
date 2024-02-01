@@ -147,7 +147,6 @@ def propagate_n_satellites(sat_r, sat_v, tof, curr_time):
     return sat_new_r, sat_new_v
 
 
-from octree import generate_octree
 
 generate_histogram = True
 if generate_histogram:
