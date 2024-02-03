@@ -195,6 +195,8 @@ if generate_histogram:
             file_name = ""
             print("A file with this name already exists.\n")
 
+    # scipy's pdist returns a list of distances between unique pairs of coordinates. This pairs list
+    # will give the satellite indices of a pair given its position in the list that pdist returns.
     pairs = []
     for value1 in range(len(satellites) + random_satellite_count):
         for value2 in range(value1 + 1, len(satellites) + random_satellite_count):
@@ -208,6 +210,10 @@ def get_hist_data(sat_positions):
     distances = pdist(sat_positions)
     sat_hist_count = []
     for bin_threshold in bins:
+        # This code filters the distances to those under the bin threshold (5, 10, 20, 30 or 40) and their positions in this list.
+        # These list positions are used to retrieve the indexes of the satellites that are in these pairs.
+        # Unique ensures that an index does not count multiple times (three satellites within 5 km of each other for example).
+        # Ultimately it takes the length of these unique satellite indices.
         sat_hist_count.append(
             len(np.unique(pairs[(distances < bin_threshold).nonzero()[0]].flatten()))
         )
